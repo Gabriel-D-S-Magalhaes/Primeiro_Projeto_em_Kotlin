@@ -1,15 +1,57 @@
 package br.com.gabriel.primeiroprojetoemkotlin.view
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import api.GitHubRepositoriesResult
+import api.RepositoryRetriever
 import br.com.gabriel.primeiroprojetoemkotlin.R
 import br.com.gabriel.primeiroprojetoemkotlin.adapter.ProgrammingLanguageAdapter
+import br.com.gabriel.primeiroprojetoemkotlin.adapter.RepositoryAdapter
 import br.com.gabriel.primeiroprojetoemkotlin.model.ProgrammingLanguage
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.longToast
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : AppCompatActivity() {
+
+    private val callback = object : Callback<GitHubRepositoriesResult> {
+        /**
+         * Invoked for a received HTTP response.
+         *
+         *
+         * Note: An HTTP response may still indicate an application-level failure such as a 404 or 500.
+         * Call [Response.isSuccessful] to determine if the response indicates success.
+         */
+        override fun onResponse(
+            call: Call<GitHubRepositoriesResult>,
+            response: Response<GitHubRepositoriesResult>
+        ) {
+            longToast("Load finished.")
+
+            if (response.isSuccessful) {
+                response.body()?.repositories?.let {
+                    recyclerView.adapter = RepositoryAdapter(it) { repository ->
+                        longToast("Clicked item: ${repository.fullName}")
+                    }
+                }
+            }
+        }
+
+        /**
+         * Invoked when a network exception occurred talking to the server or when an unexpected exception
+         * occurred creating the request or processing the response.
+         */
+        override fun onFailure(call: Call<GitHubRepositoriesResult>, t: Throwable) {
+            longToast("Fail loading repositories.")
+
+            Log.e("MainActivity", "Problem calling GitHub API", t)
+        }
+    }
+    private val repositoryRetriever = RepositoryRetriever()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         recyclerView.adapter = ProgrammingLanguageAdapter(recyclerViewItems()) {
             // declaração possível pela biblioteca Anko, que reduz a sua chamada.
             longToast("Clicked item: ${it.title}")
+            repositoryRetriever.getLanguageRepositories(callback, it.title)
         }
 
         // Grid
